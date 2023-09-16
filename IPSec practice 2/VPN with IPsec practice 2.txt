@@ -1,0 +1,181 @@
+{password: cisco
+password: cisco}
+
+**configure Router 1 and Router 5 with switch
+
+R1:
+interface gig0/0
+ip address 17.17.17.1 255.255.255.0
+no shutdown
+
+R5:
+interface gig0/0
+ip address 22.22.22.1 255.255.255.0
+no shutdown
+
+**configure Router to router connection:
+
+R1:
+interface ser0/0/0
+ip address 18.18.18.1 255.255.255.0
+clock rate 128000
+no shutdown
+
+R2:
+interface ser0/0/0
+ip address 18.18.18.2 255.255.255.0
+no shutdown
+
+interface ser0/0/1
+ip address 19.19.19.2 255.255.255.0
+clock rate 128000
+no shutdown
+
+R3:
+interface ser0/0/0
+ip address 19.19.19.1 255.255.255.0
+no shutdown
+
+interface ser0/0/1
+ip address 20.20.20.2 255.255.255.0
+clock rate 128000
+no shutdown
+
+R4:
+interface ser0/0/0
+ip address 20.20.20.1 255.255.255.0
+no shutdown
+
+interface ser0/0/1
+ip address 21.21.21.2 255.255.255.0
+clock rate 128000
+no shutdown
+
+R5:
+interface ser0/0/0
+ip address 21.21.21.1 255.255.255.0
+clock rate 128000
+no shutdown
+
+**configure Single Area OSPF between all the routers:
+
+R1:
+router ospf 14
+ router-id 1.1.1.1
+ network 18.18.18.0 0.0.0.255 area 0
+ network 17.17.17.0 0.0.0.255 area 0
+
+R2:
+router ospf 14
+ router-id 2.2.2.2
+ network 18.18.18.0 0.0.0.255 area 0
+ network 19.19.19.0 0.0.0.255 area 0
+
+R3:
+router ospf 14
+ router-id 3.3.3.3
+ network 20.20.20.0 0.0.0.255 area 0
+ network 19.19.19.0 0.0.0.255 area 0
+
+R4:
+router ospf 14
+ router-id 4.4.4.4
+ network 20.20.20.0 0.0.0.255 area 0
+ network 21.21.21.0 0.0.0.255 area 0
+
+R5:
+router ospf 14
+ router-id 2.2.2.2
+ network 21.21.21.0 0.0.0.255 area 0
+ network 22.22.22.0 0.0.0.255 area 0
+
+**Configure VPN with IPsec for Rourter 1 and Router 5:
+
+R1:
+**Enable security features:
+show version
+
+licence boot module c2900 technology-package securityk9
+end
+copy running-config startup-config
+reload
+
+**configure IPsec parameters on R1
+--> identify interesting traffic 
+access-list 110 permit ip 17.17.17.0 0.0.0.255 22.22.22.0 0.0.0.255
+
+--> configure ISAKMP phase-1
+crypto isakmp policy 10
+encryption aes
+authentication pre-share
+group 2
+exit
+
+--> address pairing
+crypto isakmp key cisco address 21.21.21.1
+
+**configure ISAKMP phase-2
+crypto ipsec transform-set VPN-SET esp-3des esp-sha-hmac
+crypto map VPN-MAP 10 ipsec-isakmp
+description VPN connection to R3
+set peer 21.21.21.1
+set transform-set VPN-SET
+match address 110
+exit
+
+-->configure crypto map outgoing interface
+interface s0/0/0
+crypto map VPN-MAP
+
+
+R3:
+**Enable security features:
+show version
+
+licence boot module c2900 technology-package securityk9
+end
+copy running-config startup-config
+reload
+
+**configure IPsec parameters on R1
+--> identify interesting traffic 
+access-list 110 permit ip 22.22.22.0  0.0.0.255 17.17.17.0 0.0.0.255
+
+--> configure ISAKMP phase-1
+crypto isakmp policy 10
+encryption aes
+authentication pre-share
+group 2
+exit
+
+--> address pairing
+crypto isakmp key cisco address 18.1.18.1
+
+**configure ISAKMP phase-2
+crypto ipsec transform-set VPN-SET esp-3des esp-sha-hmac
+crypto map VPN-MAP 10 ipsec-isakmp
+description VPN connection to R3
+set peer 18.1.18.1
+set transform-set VPN-SET
+match address 110
+exit
+
+-->configure crypto map outgoing interface
+interface s0/0/0
+crypto map VPN-MAP
+
+
+**password protect Router 1 and Routr 5:
+line console 0
+password cisco
+login
+exit
+
+enable secret cisco
+exit
+
+
+
+
+
+ 
