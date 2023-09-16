@@ -1,0 +1,158 @@
+##{1/password: cisco
+2/password:cisco}##
+
+**router to switch configuration:
+#R1:
+interface fa0/0
+ip address 192.168.1.0 255.255.255.0
+no shutdown
+
+#R3:
+interface fa0/0
+ip address 192.168.3.0 255.255.255.0
+no shutdown
+
+#R2:
+interface fa0/0
+ip address 192.168.2.0 255.255.255.0
+no shutdown
+
+**Router to Router connection::
+
+#R1:
+interface ser0/0/0
+ip address 10.1.1.2 255.255.255.252
+clock rate 128000 
+no shutdown
+
+#R2:
+interface ser0/0/0
+ip address 10.1.1.1 255.255.255.252
+no shutdown
+
+interface ser0/0/1
+ip address 10.2.2.1 255.255.255.252
+clock rate 1280000
+no shutdown
+
+#R3:
+interface ser0/0/1
+ip address 10.2.2.2 255.255.255.252
+no shutdown
+
+**Configure Single Area OSPF between the Routers:
+
+R1:
+router ospf 10
+ router-id 1.1.1.1
+ log-adjacency-changes
+ passive-interface FastEthernet0/0
+ network 192.168.1.0 0.0.0.255 area 0
+ network 10.1.1.0 0.0.0.3 area 0
+
+R2:
+router ospf 10
+ router-id 2.2.2.2
+ log-adjacency-changes
+ passive-interface FastEthernet0/0
+ network 192.168.2.0 0.0.0.255 area 0
+ network 10.2.2.0 0.0.0.3 area 0
+ network 10.1.1.0 0.0.0.3 area 0
+
+R3:
+router ospf 10
+ router-id 3.3.3.3
+ log-adjacency-changes
+ passive-interface FastEthernet0/0
+ network 192.168.3.0 0.0.0.255 area 0
+ network 10.2.2.0 0.0.0.3 area 0
+
+
+Start configuring IPsec between Router 1 and Router 3:
+ 
+R1:
+**Enable security features:
+show version
+
+licence boot module c2900 technology-package securityk9
+end
+copy running-config startup-config
+reload
+
+**configure IPsec parameters on R1
+--> identify interesting traffic 
+access-list 110 permit ip 192.168.1.0 0.0.0.255 192.168.3.0 0.0.0.255
+
+--> configure ISAKMP phase-1
+crypto isakmp policy 10
+encryption aes
+authentication pre-share
+group 2
+exit
+--> address pairing
+crypto isakmp key cisco address 10.2.2.2
+
+**configure ISAKMP phase-2
+crypto ipsec transform-set VPN-SET esp-3des esp-sha-hmac
+crypto map VPN-MAP 10 ipsec-isakmp
+description VPN connection to R3
+set peer 10.2.2.2
+set transform-set VPN-SET
+match address 110
+exit
+
+-->configure crypto map outgoing interface
+interface s0/0/0
+crypto map VPN-MAP
+
+
+
+##R3:
+**Enable security features:
+show version
+
+licence boot module c2900 technology-package securityk9
+end
+copy running-config startup-config
+reload
+
+**configure IPsec parameters on R3
+--> identify interesting traffic 
+access-list 110 permit ip 192.168.3.0 0.0.0.255 192.168.1.0 0.0.0.255
+
+--> configure ISAKMP phase-1
+crypto isakmp policy 10
+encryption aes
+authentication pre-share
+group 2
+exit
+
+--> address pairing
+crypto isakmp key cisco address 10.1.1.2
+
+**configure ISAKMP phase-2
+crypto ipsec transform-set VPN-SET esp-3des esp-sha-hmac
+crypto map VPN-MAP 10 ipsec-isakmp
+description VPN connection to R1
+set peer 10.1.1.2
+set transform-set VPN-SET
+match address 110
+exit
+
+-->configure crypto map outgoing interface
+interface s0/0/1
+crypto map VPN-MAP
+
+
+***veryfy the network :
+show crypto ipsec sa
+
+(Router Enabled Secerity):
+R1,R2.R3::
+line console 0
+password cisco
+login
+exit
+
+enable secret cisco
+exit
