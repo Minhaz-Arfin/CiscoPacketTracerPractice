@@ -1,0 +1,41 @@
+Router to Router configuration:
+R0:
+interface ser2/0
+ip address 209.165.200.225 255.55.255.224
+clock rate 64000
+no shutdown
+
+R1:
+interface ser3/0
+ip address 209.165.200.226 255.55.255.224
+no shutdown
+
+
+Define static root:
+R0:
+ip route 192.168.10.0 255.255.255.0 ser3/0
+
+R1: 
+ip route 0.0.0.0 0.0.0.0 ser2/0
+
+configure nat configuration on boundary router:
+
+R1:
+
+ip nat inside source static 192.168.10.2 209.165.200.227
+ip nat inside source static 192.168.10.3 209.165.200.228
+
+Define inside interface:
+R1:
+interface fa0/0
+ip nat inside
+no shutdown
+exit
+
+interface ser2/0
+ip nat outside
+no shutdown
+
+**varify NAT:
+show ip nat statistics
+show ip nat translations
